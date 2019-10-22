@@ -27,7 +27,17 @@ provider:
         Fn::GetAtt:
           - RekognitionSNSPublishRole
           - Arn
+    - Effect: "Allow" 
+      Action: 
+        - "dynamodb:PutItem"
+      Resource: 
+        Fn::GetAtt: 
+          - VideosTable
+          - Arn
+  
+
   environment: 
+    DYNAMODB_TABLE_NAME: ${self:custom.videosTableName}
     REKOGNITION_SNS_TOPIC_ARN: ${self:custom.rekognitionSNSTopicArn} 
     REKOGNITION_ROLE_ARN: 
       Fn::GetAtt:
@@ -35,6 +45,7 @@ provider:
         - Arn
 
 custom: 
+  videosTableName: ${file(../config.${self:provider.stage}.json):videolyzer.videos_table}
   rekognitionSNSTopicArn: 
     Fn::Join:
       - ':'
@@ -55,10 +66,6 @@ custom:
           - ''
           - ${file(../config.${self:provider.stage}.json):videolyzer.videos_bucket}
 
-# you can define service wide environment variables here
-#  environment:
-#    variable1: value1
-
 functions:
   startProcessingVideo:
     handler: handler.start_processing_video
@@ -75,6 +82,21 @@ functions:
 
 resources: 
   Resources: 
+    VideosTable: 
+      Type: AWS::DynamoDB::Table
+      Properties: 
+        AttributeDefinitions: 
+          -
+            AttributeName: videoName
+            AttributeType: S
+        KeySchema: 
+          -
+            AttributeName: videoName
+            KeyType: HASH
+        ProvisionedThroughput: 
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.videosTableName}
     RekognitionSNSPublishRole: 
       Type: AWS::IAM::Role
       Properties:
